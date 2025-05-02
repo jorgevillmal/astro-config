@@ -1,0 +1,26 @@
+# Archivos específicos de macOS (innecesarios en otros equipos)
+.DS_Store
+
+# Archivo de bloqueo generado por lazy.nvim
+lazy-lock.json
+
+# Conexiones locales de DB-UI (pueden tener datos sensibles)
+db_ui/connections.json
+
+# Archivos temporales o personales que no deben sincronizarse
+.cache/
+local/
+site/
+sessions/
+
+# Archivos de configuración local (opcional ignorarlos si difieren entre equipos)
+.neoconf.json
+
+# Archivos de respaldo de Neovim
+*.swp
+*.swo
+*~
+
+# Logs
+log/
+logs/
