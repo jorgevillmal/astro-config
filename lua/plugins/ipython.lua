@@ -1,11 +1,33 @@
 return {
-
+  -- IPython sender
   {
     "bfredl/nvim-ipy",
-    ft = { "python" }, -- Solo cargar para archivos Python
+    ft = { "python" },
     config = function()
-      vim.g.ipy_celldef = "##" -- Define los marcadores de celda, puede cambiarse según tus preferencias.
-      vim.g.ipy_term = "ipython" -- Comando para iniciar IPython.
+      vim.g.ipy_celldef = "##"
+      vim.g.ipy_term = "ipython"
     end,
+  },
+
+  -- Autoformato con black + isort
+  {
+    "stevearc/conform.nvim",
+    opts = {
+      formatters_by_ft = {
+        python = { "black", "isort" },
+      },
+      format_on_save = {
+        lsp_fallback = true,
+        timeout_ms = 500,
+      },
+    },
+  },
+
+  -- Depuración con DAP
+  {
+    "mfussenegger/nvim-dap-python",
+    ft = { "python" },
+    dependencies = { "mfussenegger/nvim-dap" },
+    config = function() require("dap-python").setup "~/.local/share/nvim/mason/packages/debugpy/venv/bin/python" end,
   },
 }

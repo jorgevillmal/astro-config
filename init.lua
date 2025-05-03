@@ -24,7 +24,7 @@ local host = vim.loop.os_gethostname()
 if host == "Jorges-MacBook-Pro.local" then
   vim.g.python3_host_prog = "/Users/jorgevillmal/.venvs/astroenv/bin/python3"
 elseif host == "Jorges-Mac-mini.local" then
-  vim.g.python3_host_prog = "/opt/homebrew/opt/python@3.11/bin/python3.11"
+  vim.g.python3_host_prog = "/Users/jorgevillarreal/.venvs/astronvim/bin/python"
 end
 
 require "lazy_setup"
