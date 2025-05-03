@@ -10,23 +10,12 @@ return {
     require("neotest").setup {
       adapters = {
         require "neotest-python" {
-          -- ajusta la ruta si usas entorno virtual
           dap = { justMyCode = false },
           runner = "pytest",
         },
       },
+      log_level = 3,
+      consumers = {},
     }
-
-    local wk = require "which-key"
-    wk.register({
-      t = {
-        name = "Tests",
-        f = { function() require("neotest").run.run(vim.fn.expand "%") end, "Run File" },
-        n = { function() require("neotest").run.run() end, "Run Nearest Test" },
-        l = { function() require("neotest").run.run_last() end, "Run Last Test" },
-        o = { function() require("neotest").output.open { enter = true } end, "Open Output" },
-        s = { function() require("neotest").summary.toggle() end, "Toggle Summary" },
-      },
-    }, { prefix = "<leader>" })
   end,
 }
