@@ -10,6 +10,8 @@ return {
         on_attach = function(client, bufnr)
           require("sqls").on_attach(client, bufnr)
           vim.cmd [[ let b:db = 'mysql://root@localhost' ]]
+          -- 🔒 Desactiva el formateo del LSP sqls para evitar interferencias
+          client.server_capabilities.documentFormattingProvider = false
         end,
         settings = {
           sqls = {
@@ -50,6 +52,8 @@ return {
   { -- Formato con sqlfluff
     "stevearc/conform.nvim",
     opts = {
+      -- 🧠 Formatear al guardar SOLO en archivos SQL
+      format_on_save = function(bufnr) return vim.bo[bufnr].filetype == "sql" end,
       formatters_by_ft = {
         sql = { "sqlfluff" },
       },
@@ -59,10 +63,15 @@ return {
             "fix",
             "--dialect",
             "mysql",
-            "--exclude-rules",
-            "L009",
           },
-          command = "/Users/jorgevillmal/.venvs/astroenv/bin/sqlfluff",
+          command = (function()
+            local host = vim.uv.os_gethostname()
+            if host == "Jorges-MacBook-Pro.local" then
+              return "/Users/jorgevillmal/.venvs/astroenv/bin/sqlfluff"
+            elseif host == "Jorges-Mac-mini.local" then
+              return "/Users/jorgevillarreal/.venvs/astronvim/bin/sqlfluff"
+            end
+          end)(),
         },
       },
     },
