@@ -100,37 +100,35 @@ return {
           vim.b[args.buf].autoformat = false
         end,
       })
+
+      -- 📝 Commentstring para SQL
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = { "sql", "mysql" },
+        callback = function(args) vim.bo[args.buf].commentstring = "-- %s" end,
+      })
     end,
   },
 
-  -- Formateo (Conform): SOLO sql-formatter al guardar
+  -- Formateo (Conform): usar sqlfluff como formatter
   {
     "stevearc/conform.nvim",
     opts = {
       formatters_by_ft = {
-        sql = { "sql_formatter" },
+        -- IMPORTANTE: reemplazamos sql-formatter por sqlfluff
+        sql = { "sqlfluff" },
       },
       formatters = {
-        sql_formatter = {
-          command = "sql-formatter",
-          -- Usa config global (~/.sql-formatter.json) si existe; si no, fija lenguaje
-          args = function()
-            local cfg = vim.fn.expand "~/.sql-formatter.json"
-            if vim.fn.filereadable(cfg) == 1 then
-              return { "--config", cfg }
-            else
-              return { "--language", "mysql" }
-            end
-          end,
+        sqlfluff = {
+          command = "sqlfluff",
+          -- 'fix' lee de stdin con '-' y escribe a stdout; forzamos sin prompt
+          args = { "fix", "-", "--dialect", "mysql", "--force" },
           stdin = true,
         },
       },
-      stop_after_first = true, -- no encadenar otros formateadores
-      -- No hacer fallback al LSP; solo sql-formatter
+      stop_after_first = true, -- no encadenar otros formatters
       format_on_save = function(bufnr)
-        if vim.bo[bufnr].filetype == "sql" then return { lsp_fallback = false, timeout_ms = 3000 } end
+        if vim.bo[bufnr].filetype == "sql" then return { lsp_fallback = false, timeout_ms = 8000 } end
       end,
-      -- notify_on_error = false, -- descomenta si quieres silenciar popups en errores
     },
   },
 }
