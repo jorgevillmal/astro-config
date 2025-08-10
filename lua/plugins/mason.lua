@@ -1,10 +1,3 @@
--- if true then return {} end -- WARN: REMOVE THIS LINE TO ACTIVATE THIS FILE
-
--- Eliminar la primera línea que bloquea el archivo
--- if true then return {} end -- WARN: REMOVE THIS LINE TO ACTIVATE THIS FILE
-
--- Customize Mason plugins
-
 ---@type LazySpec
 return {
   -- Configurar Mason para la instalación de servidores LSP
@@ -14,6 +7,7 @@ return {
       ensure_installed = {
         "lua_ls",
         "texlab", -- LSP para LaTeX
+        "sqls", -- LSP para SQL
       },
     },
   },
@@ -24,6 +18,7 @@ return {
       ensure_installed = {
         "stylua",
         "latexindent", -- Formateador para LaTeX
+        "sqlfluff", -- Formateador/linter para SQL
       },
     },
   },
