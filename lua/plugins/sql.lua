@@ -8,20 +8,12 @@ return {
     config = function()
       require("lspconfig").sqls.setup {
         on_attach = function(client, bufnr)
-          -- Evitar choques con Conform: desactiva formateo del LSP
           client.server_capabilities.documentFormattingProvider = false
           client.server_capabilities.documentRangeFormattingProvider = false
           require("sqls").on_attach(client, bufnr)
-          -- Si usas ~/.my.cnf, no pongas credenciales aquí.
-          -- vim.cmd [[ let b:db = 'mysql://root@localhost' ]]
         end,
         settings = {
-          sqls = {
-            connections = {
-              -- Déjalo vacío si usas ~/.my.cnf
-              -- { driver = "mysql", dataSourceName = "root@tcp(127.0.0.1:3306)/" },
-            },
-          },
+          sqls = { connections = {} },
         },
       }
     end,
@@ -48,7 +40,6 @@ return {
     "kristijanhusak/vim-dadbod-completion",
     ft = { "sql", "mysql" },
     config = function()
-      -- Integración con nvim-cmp en buffers SQL
       vim.api.nvim_create_autocmd("FileType", {
         pattern = { "sql", "mysql" },
         callback = function()
@@ -65,12 +56,10 @@ return {
         end,
       })
 
-      -- Ejecutar selección / línea / archivo
       vim.keymap.set("v", "<leader>qe", ":DB<CR>", { desc = "DB: Ejecutar selección" })
       vim.keymap.set("n", "<leader>ql", ":.DB<CR>", { desc = "DB: Ejecutar línea" })
       vim.keymap.set("n", "<leader>qa", ":%DB<CR>", { desc = "DB: Ejecutar archivo completo" })
 
-      -- Ejecutar celda '-- %%'
       local function run_sql_cell()
         local cur = vim.api.nvim_win_get_cursor(0)[1]
         local last = vim.fn.line "$"
@@ -91,17 +80,17 @@ return {
       end
       vim.keymap.set("n", "<leader>qc", run_sql_cell, { desc = "DB: Ejecutar celda (-- %%)" })
 
-      -- 🔒 Desactivar cualquier autoformat genérico en SQL (Conform se encargará)
+      -- No bloquear autoformato en SQL
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "sql",
         callback = function(args)
           vim.bo[args.buf].formatexpr = ""
           vim.bo[args.buf].indentexpr = ""
-          vim.b[args.buf].autoformat = false
+          vim.b[args.buf].autoformat = true
         end,
       })
 
-      -- 📝 Commentstring para SQL
+      -- Commentstring
       vim.api.nvim_create_autocmd("FileType", {
         pattern = { "sql", "mysql" },
         callback = function(args) vim.bo[args.buf].commentstring = "-- %s" end,
@@ -109,26 +98,56 @@ return {
     end,
   },
 
-  -- Formateo (Conform): usar sqlfluff como formatter
+  -- Conform: encadenar sql-formatter -> sqlfluff
   {
     "stevearc/conform.nvim",
     opts = {
+      -- Ejecuta AMBOS en orden: primero sql-formatter, luego sqlfluff
       formatters_by_ft = {
-        -- IMPORTANTE: reemplazamos sql-formatter por sqlfluff
-        sql = { "sqlfluff" },
+        sql = { "sql_formatter", "sqlfluff" },
       },
       formatters = {
+        -- 1) sql-formatter (Node). Asegúrate de tenerlo instalado (npm i -g sql-formatter)
+        sql_formatter = {
+          command = "sql-formatter",
+          args = function()
+            local cfg = vim.fn.expand "~/.sql-formatter.json"
+            if vim.fn.filereadable(cfg) == 1 then
+              return { "--config", cfg }
+            else
+              return { "--language", "mysql" }
+            end
+          end,
+          stdin = true,
+          exit_codes = { 0 }, -- este debería salir 0
+        },
+        -- 2) sqlfluff (pulido final con tus reglas)
         sqlfluff = {
           command = "sqlfluff",
-          -- 'fix' lee de stdin con '-' y escribe a stdout; forzamos sin prompt
-          args = { "fix", "-", "--dialect", "mysql", "--force" },
+          args = { "fix", "-", "--dialect", "mysql", "--config", vim.fn.expand "~/.sqlfluff" },
           stdin = true,
+          exit_codes = { 0, 1 }, -- 1 = violaciones no corregibles; no lo tratamos como error
+          env = { SQLFLUFF_CONFIG = vim.fn.expand "~/.sqlfluff" },
         },
       },
-      stop_after_first = true, -- no encadenar otros formatters
-      format_on_save = function(bufnr)
-        if vim.bo[bufnr].filetype == "sql" then return { lsp_fallback = false, timeout_ms = 8000 } end
-      end,
+      -- Ejecuta TODOS los formatters listados para el ft (no solo el primero)
+      run_all_formatters = true,
+      stop_after_first = false,
+      notify_on_error = false,
     },
+    config = function(_, opts)
+      require("conform").setup(opts)
+      -- Formatear SIEMPRE al guardar .sql
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        pattern = "*.sql",
+        callback = function(args)
+          require("conform").format {
+            bufnr = args.buf,
+            lsp_fallback = false,
+            timeout_ms = 8000,
+          }
+        end,
+      })
+    end,
   },
 }
