@@ -291,47 +291,59 @@ return {
     end,
   },
 
-  -- Conform: sql-formatter → sqlfluff
+  -- Conform: sql-formatter + sqlfluff (soporta sql y mysql)
   {
     "stevearc/conform.nvim",
-    opts = {
-      formatters_by_ft = { sql = { "sql_formatter", "sqlfluff" } },
-      formatters = {
-        sql_formatter = {
-          command = "sql-formatter",
-          condition = function() return vim.fn.executable "sql-formatter" == 1 end,
-          args = function()
-            local cfg = vim.fn.expand "~/.sql-formatter.json"
-            if vim.fn.filereadable(cfg) == 1 then return { "--config", cfg } end
-            return { "--language", "mysql" }
-          end,
-          stdin = true,
-          exit_codes = { 0 },
+    opts = function()
+      return {
+        -- Mapea ambos filetypes
+        formatters_by_ft = {
+          sql = { "sql_formatter" }, -- empieza solo con uno para aislar
+          mysql = { "sql_formatter" },
         },
-        sqlfluff = {
-          command = "sqlfluff",
-          args = { "fix", "-", "--dialect", "mysql", "--config", vim.fn.expand "~/.sqlfluff" },
-          stdin = true,
-          exit_codes = { 0, 1 },
-          env = { SQLFLUFF_CONFIG = vim.fn.expand "~/.sqlfluff" },
+        -- Si quieres sumar sqlfluff luego, lo añadimos al final
+        formatters = {
+          sql_formatter = {
+            command = "sql-formatter",
+            condition = function() return vim.fn.executable "sql-formatter" == 1 end,
+            args = function()
+              local cfg = vim.fn.expand "~/.sql-formatter.json"
+              if vim.fn.filereadable(cfg) == 1 then return { "--config", cfg } end
+              return { "--language", "mysql" } -- por defecto
+            end,
+            stdin = true,
+            exit_codes = { 0 },
+          },
+          -- Puedes activar sqlfluff cuando el básico ya funcione:
+          -- sqlfluff = {
+          --   command = "sqlfluff",
+          --   args = { "fix", "-", "--dialect", "mysql" },
+          --   stdin = true,
+          --   exit_codes = { 0, 1 }, -- 1 = tuvo “lint fixes”
+          -- },
         },
-      },
-      run_all_formatters = true,
-      stop_after_first = false,
-      notify_on_error = false,
-    },
-    config = function(_, opts)
-      require("conform").setup(opts)
-      vim.api.nvim_create_autocmd("BufWritePre", {
-        pattern = "*.sql",
-        callback = function(args)
-          require("conform").format {
-            bufnr = args.buf,
-            lsp_fallback = false,
-            timeout_ms = 8000,
-          }
+
+        -- Ver los errores (si el parser no puede leer, te lo dirá)
+        notify_on_error = true,
+
+        -- Hook nativo de guardado (mejor que autocmd manual)
+        format_on_save = function(bufnr)
+          local ft = vim.bo[bufnr].filetype
+          if ft == "sql" or ft == "mysql" then return { timeout_ms = 8000, lsp_fallback = false } end
         end,
-      })
+      }
+    end,
+    config = function(_, opts)
+      local conform = require "conform"
+      conform.setup(opts)
+
+      -- Atajo manual por si quieres forzar formato
+      vim.keymap.set(
+        "n",
+        "<leader>cf",
+        function() conform.format { async = true, lsp_fallback = false } end,
+        { desc = "Formatear buffer (Conform)" }
+      )
     end,
   },
 }
