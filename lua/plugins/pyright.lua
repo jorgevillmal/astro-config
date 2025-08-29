@@ -1,41 +1,42 @@
 -- pyright.lua
 return {
   "neovim/nvim-lspconfig",
-  config = function()
-    local lspconfig = require "lspconfig"
+  opts = {
+    servers = {
+      pyright = {
+        -- Detecta la raíz del proyecto de forma robusta
+        root_dir = function(fname)
+          local util = require "lspconfig.util"
+          return util.root_pattern("pyproject.toml", "setup.cfg", "setup.py", "requirements.txt", ".git")(fname)
+            or util.find_git_ancestor(fname)
+            or util.path.dirname(fname)
+        end,
 
-    lspconfig.pyright.setup {
-      root_dir = function(fname)
-        local root_files = {
-          ".git",
-          "pyproject.toml",
-          "setup.py",
-          "setup.cfg",
-          "requirements.txt",
-        }
-        local root = lspconfig.util.root_pattern(unpack(root_files))(fname) or lspconfig.util.path.dirname(fname)
-
-        if root == nil then
-          return vim.fn.getcwd()
-        else
-          return root
-        end
-      end,
-      settings = {
-        python = {
-          -- Directorio donde se encuentran los entornos virtuales
-          venvPath = "/Users/jorgevillmal/.venvs",
-          -- Ruta del intérprete de Python del entorno virtual
-          pythonPath = "/Users/jorgevillmal/.venvs/astroenv/bin/python",
-          analysis = {
-            logLevel = "Trace", -- Habilita el registro detallado
-            autoSearchPaths = true,
-            useLibraryCodeForTypes = true,
-            diagnosticMode = "workspace",
-            typeCheckingMode = "off", -- Desactiva la comprobación de tipos estricta para evitar errores innecesarios
+        -- Ajustes de análisis pensados para Data Science
+        settings = {
+          python = {
+            analysis = {
+              typeCheckingMode = "basic", -- puedes subir a "strict" cuando quieras
+              autoImportCompletions = true,
+              diagnosticMode = "workspace", -- analiza todo el workspace
+              useLibraryCodeForTypes = true,
+            },
           },
         },
+
+        -- Ajusta el venv dinámicamente si hay VIRTUAL_ENV (venv-selector, direnv, etc.)
+        on_new_config = function(config, _)
+          local venv = vim.env.VIRTUAL_ENV
+          if venv and #venv > 0 then
+            -- Para Pyright, lo más limpio es indicar venvPath + venv (en vez de pythonPath)
+            local util = require "lspconfig.util"
+            config.settings = config.settings or {}
+            config.settings.python = config.settings.python or {}
+            config.settings.python.venvPath = util.path.dirname(venv)
+            config.settings.python.venv = vim.fn.fnamemodify(venv, ":t")
+          end
+        end,
       },
-    }
-  end,
+    },
+  },
 }
