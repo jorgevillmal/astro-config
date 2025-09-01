@@ -1,6 +1,7 @@
 -- plugins/productivity.lua
 return {
-  { -- TODO/FIXME/etc en comentarios
+  -- TODO/FIXME en comentarios
+  {
     "folke/todo-comments.nvim",
     event = "VeryLazy",
     dependencies = { "nvim-lua/plenary.nvim" },
@@ -12,13 +13,15 @@ return {
     end,
   },
 
-  { -- Resalta repeticiones de variables
+  -- Resalta repeticiones de variables
+  {
     "RRethy/vim-illuminate",
     event = "VeryLazy",
     config = function() require("illuminate").configure { delay = 200 } end,
   },
 
-  { -- Navegación avanzada
+  -- Navegación avanzada (Harpoon 1)
+  {
     "ThePrimeagen/harpoon",
     dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
@@ -29,5 +32,28 @@ return {
       { "<leader>3", function() require("harpoon.ui").nav_file(3) end, desc = "Harpoon file 3" },
     },
     config = true,
+  },
+
+  -- === Autoformato SÓLO para Python (black + isort) ==========================
+  {
+    "stevearc/conform.nvim",
+    ft = { "python" },
+    opts = {
+      formatters_by_ft = {
+        -- mantenemos Lua/JS en none-ls, aquí solo Python para no duplicar
+        python = { "black", "isort" },
+      },
+      format_on_save = {
+        lsp_fallback = true, -- p.ej. si black/isort no están disponibles
+        timeout_ms = 800,
+      },
+    },
+    keys = {
+      {
+        "<leader>pf",
+        function() require("conform").format { async = true, lsp_fallback = true } end,
+        desc = "Python: format (black+isort)",
+      },
+    },
   },
 }

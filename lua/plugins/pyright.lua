@@ -1,10 +1,12 @@
--- pyright.lua
+-- lua/plugins/pyright.lua
 return {
   "neovim/nvim-lspconfig",
   opts = {
     servers = {
       pyright = {
-        -- Detecta la raíz del proyecto de forma robusta
+        single_file_support = true,
+
+        -- Raíz del proyecto robusta
         root_dir = function(fname)
           local util = require "lspconfig.util"
           return util.root_pattern("pyproject.toml", "setup.cfg", "setup.py", "requirements.txt", ".git")(fname)
@@ -16,22 +18,52 @@ return {
         settings = {
           python = {
             analysis = {
-              typeCheckingMode = "basic", -- puedes subir a "strict" cuando quieras
+              -- "off" (laxo), "basic" (recomendado), "strict" (exigente)
+              typeCheckingMode = "basic",
               autoImportCompletions = true,
-              diagnosticMode = "workspace", -- analiza todo el workspace
+              autoSearchPaths = true,
+              diagnosticMode = "workspace", -- cambia a "openFilesOnly" si va pesado
               useLibraryCodeForTypes = true,
+              -- evita ruido en análisis
+              exclude = {
+                "**/.git",
+                "**/.hg",
+                "**/.svn",
+                "**/__pycache__",
+                "**/.mypy_cache",
+                "**/.venv",
+                "**/venv",
+                "**/env",
+                "**/build",
+                "**/dist",
+              },
+              -- extraPaths = { "src" }, -- descomenta si usas layout src/
+              -- stubPath = "typings",   -- si usas stubs locales
             },
           },
         },
 
-        -- Ajusta el venv dinámicamente si hay VIRTUAL_ENV (venv-selector, direnv, etc.)
-        on_new_config = function(config, _)
+        -- Selecciona el entorno: VIRTUAL_ENV > .venv/venv en raíz > CONDA_PREFIX
+        on_new_config = function(config, root_dir)
+          local util = require "lspconfig.util"
+
           local venv = vim.env.VIRTUAL_ENV
+          if not venv or #venv == 0 then
+            -- busca carpetas virtualenv comunes en el repo
+            for _, name in ipairs { ".venv", "venv", "env" } do
+              local p = util.path.join(root_dir, name)
+              if vim.fn.isdirectory(p) == 1 then
+                venv = p
+                break
+              end
+            end
+          end
+          if (not venv or #venv == 0) and vim.env.CONDA_PREFIX then venv = vim.env.CONDA_PREFIX end
+
           if venv and #venv > 0 then
-            -- Para Pyright, lo más limpio es indicar venvPath + venv (en vez de pythonPath)
-            local util = require "lspconfig.util"
             config.settings = config.settings or {}
             config.settings.python = config.settings.python or {}
+            -- Para Pyright, venvPath + venv es lo más estable
             config.settings.python.venvPath = util.path.dirname(venv)
             config.settings.python.venv = vim.fn.fnamemodify(venv, ":t")
           end
